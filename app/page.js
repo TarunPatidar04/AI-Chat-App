@@ -1,103 +1,289 @@
-import Image from "next/image";
+"use client";
+import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [message, setMessage] = useState("");
+  const [chat, setChat] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chat]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!message.trim() || isLoading) return;
+    
+    setIsLoading(true);
+    const userMessage = { role: "user", message };
+    setChat([...chat, userMessage]);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      const data = await response.json();
+      setChat([
+        ...chat,
+        userMessage,
+        { role: "ai", message: data.content },
+      ]);
+    } catch (error) {
+      setChat([
+        ...chat,
+        userMessage,
+        { role: "ai", message: "Sorry, I encountered an error. Please try again." },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100vh",
+      backgroundColor: "#343541",
+      color: "#ececf1",
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+    }}>
+      {/* Header */}
+      <header style={{
+        padding: "12px 20px",
+        borderBottom: "1px solid #4d4d4f",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: "#202123"
+      }}>
+        <h1 style={{
+          fontSize: "20px",
+          fontWeight: "600",
+          margin: "0",
+          color: "#ececf1"
+        }}>AI Assistant</h1>
+      </header>
+
+      {/* Chat Container */}
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px"
+      }}>
+        {chat.length === 0 ? (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            color: "#8e8ea0",
+            textAlign: "center"
+          }}>
+            <h2 style={{ fontSize: "28px", marginBottom: "16px" }}>How can I help you today?</h2>
+            <p>Ask me anything, from creative ideas to technical explanations.</p>
+          </div>
+        ) : (
+          chat.map((entry, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                gap: "16px",
+                padding: "12px 0",
+                maxWidth: "800px",
+                margin: "0 auto",
+                width: "100%",
+                backgroundColor: entry.role === "ai" ? "#444654" : "transparent",
+                borderRadius: "8px",
+                padding: "16px",
+                alignSelf: entry.role === "user" ? "flex-end" : "flex-start"
+              }}
+            >
+              <div style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                backgroundColor: entry.role === "ai" ? "#10a37f" : "#ececf1",
+                color: entry.role === "ai" ? "#fff" : "#000",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                fontWeight: "bold",
+                fontSize: "14px"
+              }}>
+                {entry.role === "ai" ? "AI" : "You"}
+              </div>
+              <div style={{
+                flex: 1,
+                lineHeight: "1.6",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word"
+              }}>
+                {entry.message}
+              </div>
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div style={{
+            display: "flex",
+            gap: "16px",
+            padding: "16px",
+            maxWidth: "800px",
+            margin: "0 auto",
+            width: "100%",
+            backgroundColor: "#444654",
+            borderRadius: "8px"
+          }}>
+            <div style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "50%",
+              backgroundColor: "#10a37f",
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              fontWeight: "bold",
+              fontSize: "14px"
+            }}>
+              AI
+            </div>
+            <div style={{
+              width: "40px",
+              height: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "4px"
+            }}>
+              <div style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: "#ececf1",
+                animation: "bounce 1.4s infinite ease-in-out"
+              }}></div>
+              <div style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: "#ececf1",
+                animation: "bounce 1.4s infinite ease-in-out",
+                animationDelay: "0.2s"
+              }}></div>
+              <div style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: "#ececf1",
+                animation: "bounce 1.4s infinite ease-in-out",
+                animationDelay: "0.4s"
+              }}></div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div style={{
+        padding: "20px",
+        borderTop: "1px solid #4d4d4f",
+        backgroundColor: "#40414f"
+      }}>
+        <form onSubmit={handleSubmit} style={{
+          display: "flex",
+          maxWidth: "800px",
+          margin: "0 auto",
+          gap: "12px"
+        }}>
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Message AI Assistant..."
+            required
+            style={{
+              flex: 1,
+              padding: "12px 16px",
+              borderRadius: "6px",
+              border: "none",
+              backgroundColor: "#40414f",
+              color: "#ececf1",
+              fontSize: "16px",
+              outline: "none",
+              boxShadow: "0 0 0 1px #4d4d4f",
+              transition: "box-shadow 0.2s",
+              ":focus": {
+                boxShadow: "0 0 0 1px #ececf1"
+              }
+            }}
+          />
+          <button
+            type="submit"
+            disabled={isLoading}
+            style={{
+              padding: "12px 20px",
+              borderRadius: "6px",
+              border: "none",
+              backgroundColor: "#10a37f",
+              color: "#fff",
+              fontSize: "16px",
+              fontWeight: "500",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+              ":hover": {
+                backgroundColor: "#0d8a6d"
+              },
+              ":disabled": {
+                backgroundColor: "#6e6e80",
+                cursor: "not-allowed"
+              }
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            {isLoading ? "Sending..." : "Send"}
+          </button>
+        </form>
+        <p style={{
+          fontSize: "12px",
+          color: "#8e8ea0",
+          textAlign: "center",
+          marginTop: "12px"
+        }}>
+          AI may produce inaccurate information. Consider verifying important facts.
+        </p>
+      </div>
+
+      <style jsx global>{`
+        @keyframes bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: #343541;
+        }
+      `}</style>
     </div>
   );
 }
